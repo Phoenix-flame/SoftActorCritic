@@ -43,24 +43,24 @@ class SACAgent:
 
     def get_next_action(self, state, evaluation_episode=False):
         if evaluation_episode:
-            discrete_action = self.get_action_deterministically(state)
+            action = self.get_action_deterministically(state)
         else:
-            discrete_action = self.get_action_nondeterministically(state)
-        return discrete_action
+            action = self.get_action_nondeterministically(state)
+        return action
 
     def get_action_nondeterministically(self, state):
         action_prob = self.get_action_probabilities(state)
-        discrete_action = np.random.choice(range(self.action_dim), p=action_prob)
-        return discrete_action
+        action = np.random.choice(range(self.action_dim), p=action_prob)
+        return action
 
     def get_action_deterministically(self, state):
         action_prob = self.get_action_probabilities(state)
-        discrete_action = np.argmax(action_prob)
-        return discrete_action
+        action = np.argmax(action_prob)
+        return action
 
 
-    def train(self, state, discrete_action, next_state, reward, done):
-        transition = (state, discrete_action, reward, next_state, done)
+    def train(self, state, action, next_state, reward, done):
+        transition = (state, action, reward, next_state, done)
 
         self.critic_optimiser.zero_grad()
         self.critic_optimiser2.zero_grad()
@@ -102,10 +102,10 @@ class SACAgent:
     def critic_loss(self, states_tensor, actions_tensor, rewards_tensor, next_states_tensor, done_tensor):
         with torch.no_grad():
             action_prob, log_action_prob = self.get_action_info(next_states_tensor)
-            next_q_values_target = self.critic_target.forward(next_states_tensor)
-            next_q_values_target2 = self.critic_target2.forward(next_states_tensor)
+            next_q_target = self.critic_target.forward(next_states_tensor)
+            next_q_target2 = self.critic_target2.forward(next_states_tensor)
             soft_state_values = (action_prob * (
-                    torch.min(next_q_values_target, next_q_values_target2) - self.alpha * log_action_prob
+                    torch.min(next_q_target, next_q_target2) - self.alpha * log_action_prob
             )).sum(dim=1)
 
             next_q_values = rewards_tensor + ~done_tensor * self.gamma*soft_state_values
@@ -113,12 +113,12 @@ class SACAgent:
         soft_q_values = self.critic_net(states_tensor).gather(1, actions_tensor.unsqueeze(-1)).squeeze(-1)
         soft_q_values2 = self.critic_net2(states_tensor).gather(1, actions_tensor.unsqueeze(-1)).squeeze(-1)
 
-        critic_square_error = torch.nn.MSELoss(reduction="none")(soft_q_values, next_q_values)
-        critic2_square_error = torch.nn.MSELoss(reduction="none")(soft_q_values2, next_q_values)
-        weight_update = [min(l1.item(), l2.item()) for l1, l2 in zip(critic_square_error, critic2_square_error)]
+        critic_se = torch.nn.MSELoss(reduction="none")(soft_q_values, next_q_values)
+        critic2_se = torch.nn.MSELoss(reduction="none")(soft_q_values2, next_q_values)
+        weight_update = [min(l1.item(), l2.item()) for l1, l2 in zip(critic_se, critic2_se)]
         self.replay_buffer.update_weights(weight_update)
-        critic_loss = critic_square_error.mean()
-        critic2_loss = critic2_square_error.mean()
+        critic_loss = critic_se.mean()
+        critic2_loss = critic2_se.mean()
         return critic_loss, critic2_loss
 
     def actor_loss(self, states_tensor,):

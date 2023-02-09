@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from powergym.env_register import make_env, remove_parallel_dss
-from agents.Discrete_SAC_Agent import SACAgent
+from agents.SAC_Agent import SACAgent
 import random
 import os 
 
@@ -24,9 +24,7 @@ for i_episode in range(NUM_EPISODES):
     done = False
     load_profile_idx = random.choice(profiles)
     obs = env.reset(load_profile_idx = load_profile_idx)
-    observations = []
     while not done:
-        observations.append(obs)
         fig, _ = env.plot_graph()
         plt.savefig(f"../../{episode_steps}.png")
         action = agent.get_next_action(obs, evaluation_episode=True)
@@ -37,10 +35,4 @@ for i_episode in range(NUM_EPISODES):
         obs = next_obs
 
     agent.logger.log("Train/reward", episode_reward, i_episode)
-    print("episode: {}, profile: {}, episode steps: {}, reward: {}".format(i_episode, load_profile_idx, episode_steps, round(episode_reward, 2)))
-
-# observations = np.array(observations)
-# for i in range(14):
-#     plt.plot(observations[:, i])
-
-# plt.show()
+    print("episode: {}, profile: {}, reward: {}".format(i_episode, load_profile_idx, round(episode_reward, 2)))

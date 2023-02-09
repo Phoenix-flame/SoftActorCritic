@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from powergym.env_register import make_env, remove_parallel_dss
-from agents.Discrete_SAC_Agent import SACAgent
+from agents.SAC_Agent import SACAgent
 import random
 import os 
 
@@ -28,7 +28,6 @@ def convert2multi(action):
 profiles = list(range(env.num_profiles))
 for i_episode in range(NUM_EPISODES):
     episode_reward = 0
-    episode_steps = 0
     done = False
     load_profile_idx = random.choice(profiles)
     obs = env.reset(load_profile_idx = load_profile_idx)
@@ -40,12 +39,10 @@ for i_episode in range(NUM_EPISODES):
         next_obs, reward, done, info = env.step(convert2multi(action))
         
         agent.train(obs, action, next_obs, reward, done)
-        episode_steps += 1
         episode_reward += reward
-        mask = 1 if episode_steps == env.horizon else float(not done)
         obs = next_obs
 
     agent.logger.log("Train/reward", episode_reward, i_episode)
-    print("episode: {}, profile: {}, episode steps: {}, reward: {}".format(i_episode, load_profile_idx, episode_steps, round(episode_reward, 2)))
+    print("episode: {}, profile: {}, reward: {}".format(i_episode, load_profile_idx, round(episode_reward, 2)))
     
 agent.save(idx=2)
