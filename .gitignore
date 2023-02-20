@@ -3,3 +3,4 @@
 /systems/*/loadshape
 /systems/*/loadshape.dss
 __pycache__
+/logs
